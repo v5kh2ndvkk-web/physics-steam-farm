@@ -91,6 +91,13 @@
   .gbtn.on { background:#16a34a; color:#fff; }
   .pad, .gbtn, .tab, .btn, .btn2, .opt { -webkit-touch-callout:none; touch-action:manipulation; }
   @media (pointer:coarse) { .pad { width:5rem; height:5rem; font-size:1.9rem; } }
+  input, textarea { -webkit-user-select:text; user-select:text; }
+  .btn:disabled { filter:grayscale(1); opacity:.65; cursor:not-allowed; transform:none; box-shadow:none; }
+  .btn.locked { background:linear-gradient(135deg,#94a3b8,#64748b); box-shadow:none; }
+  .btn.done, .btn.done:disabled { background:linear-gradient(135deg,#86efac,#4ade80); color:#14532d; opacity:1; filter:none; }
+  .tab.locked { opacity:.7; }
+  @keyframes cdPop { 0%{transform:scale(.4);opacity:0} 25%{transform:scale(1.15);opacity:1} 100%{transform:scale(1);opacity:.95} }
+  @media (pointer:coarse) { #tip { bottom:8.4rem !important; } }
   ::-webkit-scrollbar { width:8px; } ::-webkit-scrollbar-thumb { background:#86efac; border-radius:8px; }
 </style>
 </head>
@@ -113,7 +120,7 @@
   </div>
   <div class="ml-auto flex gap-1 p-1 rounded-full bg-green-100">
     <button id="tabExhibit" class="tab tab-on">🏡 <span class="hidden sm:inline">3D 智慧農場</span>展廳</button>
-    <button id="tabGame" class="tab">🚙 <span class="hidden sm:inline">AGV 採集</span>大冒險</button>
+    <button id="tabGame" class="tab locked"><span id="tabGameIcon">🔒</span> <span class="hidden sm:inline">AGV 採集</span>大冒險<span id="tabGameCnt" class="text-xs ml-1">0/4</span></button>
   </div>
   <button id="btnSound" class="w-9 h-9 rounded-full bg-green-100 hover:bg-green-200 text-lg" title="音效開關">🔊</button>
 </header>
@@ -136,7 +143,7 @@
       <div class="text-5xl pulse2">🌱</div>
       <div>
         <div class="font-black text-green-800 text-lg">嗨！我是小苗 👋</div>
-        <p class="text-sm font-bold text-slate-600 mt-1">歡迎來到智慧中藥農場！這裡藏著 <b class="text-green-700">4 個物理小秘密</b>。我帶你逐個看，之後就可以去駕駛 AGV 挑戰！</p>
+        <p class="text-sm font-bold text-slate-600 mt-1">歡迎來到智慧中藥農場！這裡藏著 <b class="text-green-700">4 個物理小秘密</b>。我帶你逐個看。每個都讀完並按「✅ 我記住了」，就會解鎖 🔓 <b class="text-green-700">AGV 大冒險</b>！</p>
         <div class="flex gap-2 mt-3">
           <button id="btnTourStart" class="btn text-sm" style="padding:.45rem 1rem">▶ 開始導覽</button>
           <button id="btnFree" class="btn2" style="flex:none;padding:.45rem 1rem;border-radius:9999px">自由參觀</button>
@@ -148,14 +155,15 @@
   <!-- 左下：4 個秘密 + 進度 -->
   <div id="chipPanel" class="fixed left-3 bottom-3 z-20 glass p-2 flex sm:flex-col gap-1.5 sm:w-[230px]">
     <div class="hidden sm:block px-1 pt-1">
-      <div class="flex justify-between text-xs font-black text-green-800"><span>📍 4 個物理小秘密</span><span>已探索 <b id="exProg">0</b>/4</span></div>
+      <div class="flex justify-between text-xs font-black text-green-800"><span>📍 4 個物理小秘密</span><span>已完成 <b id="exProg">0</b>/4</span></div>
       <div class="bar mt-1"><i id="exProgBar" style="width:3%;background:#22c55e"></i></div>
     </div>
     <button class="chip" data-id="newton">🔴 <span class="hidden sm:inline flex-1">牛頓運動定律</span><span class="chk text-green-600"></span></button>
     <button class="chip" data-id="friction">🟡 <span class="hidden sm:inline flex-1">摩擦力</span><span class="chk text-green-600"></span></button>
     <button class="chip" data-id="torque">🟢 <span class="hidden sm:inline flex-1">轉矩 / 力矩</span><span class="chk text-green-600"></span></button>
     <button class="chip" data-id="power">🔵 <span class="hidden sm:inline flex-1">馬達功率與能量</span><span class="chk text-green-600"></span></button>
-    <div class="hidden sm:block text-center pt-1"><button id="btnGoGame" class="btn text-xs" style="padding:.45rem .9rem">🚙 挑戰大冒險</button></div>
+    <div class="hidden sm:block text-center pt-1"><button id="btnGoGame" class="btn text-xs locked" style="padding:.45rem .9rem">🔒 完成 4 個秘密解鎖</button></div>
+    <div class="hidden sm:block text-center"><button id="btnReset" class="text-[11px] text-slate-400 underline">🔄 換人（重新開始）</button></div>
   </div>
 
   <!-- 資訊卡：電腦在右側，手機在下方 -->
@@ -170,18 +178,23 @@
     <div class="h-3 rounded-full bg-slate-200 overflow-hidden mt-1"><div id="hBatBar" class="h-full rounded-full" style="width:100%;background:#22c55e"></div></div>
     <div class="grid grid-cols-2 gap-1.5 mt-2">
       <div class="stat"><div class="k">🚀 速度</div><div class="v"><span id="hSpd">0</span> <small>km/h</small></div></div>
-      <div class="stat"><div class="k">🌿 採集草藥</div><div class="v"><span id="hHerb">0</span> <small>株</small></div></div>
+      <div class="stat"><div class="k">🏁 名次</div><div class="v"><span id="hRank">1</span><small>/6</small></div></div>
+      <div class="stat"><div class="k">🌿 草藥</div><div class="v"><span id="hHerb">0</span> <small>株</small></div></div>
       <div class="stat"><div class="k">⭐ 得分</div><div class="v" id="hScore">0</div></div>
-      <div class="stat"><div class="k">⚡ 馬達功率</div><div class="v"><span id="hPow">0.0</span> <small>kW</small></div></div>
+      <div class="stat"><div class="k">⚡ 功率</div><div class="v"><span id="hPow">0.0</span> <small>kW</small></div></div>
+      <div class="stat"><div class="k">⏱ 時間</div><div class="v"><span id="hTime">0</span> <small>秒</small></div></div>
     </div>
-    <div class="mt-2 text-xs text-slate-500 font-bold">❓ 物理關卡 <b id="hGate" class="text-green-700">0</b>/4　⏱ <b id="hTime">0</b> 秒</div>
+    <div class="mt-2 text-xs text-slate-500 font-bold">❓ 物理關卡 <b id="hGate" class="text-green-700">0</b>/4</div>
   </div>
   <div class="fixed right-3 top-[4.2rem] z-20 flex flex-col items-end gap-2">
     <canvas id="mini" width="180" height="180" class="glass" style="width:150px;height:150px"></canvas>
+    <div id="rankBoard" class="glass px-2 py-1.5 w-[150px] text-xs font-black"></div>
     <div id="hNext" class="glass px-3 py-1 text-xs font-black text-slate-700">🎯 下一關：—</div>
     <button id="btnPause" class="glass px-3 py-1 text-xs font-black text-slate-700 hover:bg-white">⏸ 暫停 (P)</button>
   </div>
-  <div id="surfBadge" class="fixed top-[4.2rem] left-1/2 -translate-x-1/2 z-20 glass px-4 py-1 text-xs sm:text-sm font-black hidden sm:block">🛣 乾爽路面</div>
+  <div id="surfBadge" class="fixed top-[4.2rem] left-1/2 -translate-x-1/2 z-20 glass px-4 py-1 text-xs sm:text-sm font-black hidden md:block">🛣 乾爽路面</div>
+  <div id="raceStrip" class="hidden md:block fixed top-[7rem] left-1/2 -translate-x-1/2 z-20 h-4 rounded-full bg-white/85" style="width:min(420px,calc(100vw - 560px));box-shadow:0 2px 8px rgba(20,90,50,.25)"></div>
+  <div id="countdown" class="hidden fixed inset-0 z-40 flex items-center justify-center pointer-events-none"><div id="cdNum" class="font-black text-white" style="font-size:9rem;text-shadow:0 6px 24px rgba(0,0,0,.45)">3</div></div>
   <div id="tip" class="fixed left-1/2 -translate-x-1/2 bottom-28 sm:bottom-5 z-20 glass px-4 py-2 text-xs sm:text-sm font-bold text-green-900 text-center max-w-[92vw] sm:max-w-xl">💡 提示</div>
   <div id="gyroPanel" class="hidden fixed left-1/2 -translate-x-1/2 bottom-3 z-20 glass px-3 py-2 flex items-center gap-2">
     <svg id="gyroWheel" viewBox="0 0 48 48" width="44" height="44" style="transition:transform .08s linear"><circle cx="24" cy="24" r="19" fill="none" stroke="#166534" stroke-width="5"/><circle cx="24" cy="24" r="5" fill="#166534"/><path d="M24 24 L24 6 M24 24 L8 33 M24 24 L40 33" stroke="#166534" stroke-width="4" stroke-linecap="round"/><circle cx="24" cy="5" r="3.2" fill="#ef4444"/></svg>
@@ -201,13 +214,18 @@
   </div>
 </div>
 
+<!-- 解鎖／未解鎖提示 -->
+<div id="gateModal" class="modal hidden">
+  <div class="panel p-6 text-center"><div id="gateBox"></div></div>
+</div>
+
 <!-- 說明 Modal -->
 <div id="introModal" class="modal hidden">
   <div class="panel p-5 sm:p-7">
     <div class="text-center">
       <div class="text-5xl">🚙🌿</div>
       <h2 class="text-2xl font-black text-green-800 mt-1">AGV 電動車採集大冒險</h2>
-      <p class="text-slate-600 font-bold mt-1">你是智慧農場的 AGV 駕駛員！在電量用完前採集中草藥，並通過 4 個物理關卡，抵達終點！</p>
+      <p class="text-slate-600 font-bold mt-1">你是智慧農場的 AGV 駕駛員！和 5 輛 AI 賽車比賽：在電量用完前採集中草藥、通過 4 個物理關卡，第一個衝過終點！</p>
     </div>
     <div class="grid sm:grid-cols-2 gap-3 mt-4 text-sm">
       <div class="bg-green-50 rounded-2xl p-3">
@@ -227,6 +245,8 @@
           <li>🔋 放開油門滑行、下坡煞車可以回收電能（再生制動）。</li>
           <li>📖 題目全部來自展廳的「記住這幾點」，先去看看會更容易！</li>
           <li>✅ 答對題目：電量 +20%、Boost 加速、+100 分！</li>
+          <li>🌿 撞到中草藥：獲得短暫加速！</li>
+          <li>🚗 小心 AI 賽車：碰撞會減速；名次越前，分數越高！</li>
         </ul>
       </div>
     </div>
@@ -236,6 +256,10 @@
         <button id="btnGyro" class="btn2" style="flex:none;padding:.4rem .9rem;border-radius:9999px">開啟陀螺儀</button>
       </div>
       <div id="gyroStatus" class="mt-1 font-bold text-slate-600 text-xs">橫向握住 iPad，像方向盤一樣左右轉動即可轉向；加速和煞車用螢幕按鈕（或在遊戲中開「自動油門」）。</div>
+    </div>
+    <div class="mt-3 bg-amber-50 rounded-2xl p-3 text-sm">
+      <div class="font-black text-amber-800 mb-1">🏆 光榮榜（這部 iPad 的最高分）</div>
+      <div id="introBoard"></div>
     </div>
     <div class="flex flex-wrap gap-3 justify-center mt-5">
       <button id="btnStart" class="btn text-lg">🚦 出發！(Enter)</button>
@@ -276,8 +300,17 @@
     <div id="rHead" class="text-sm font-black text-slate-500 mt-1"></div>
     <h2 id="rGrade" class="text-2xl sm:text-3xl font-black text-green-800"></h2>
     <p id="rMsg" class="text-sm text-slate-600 font-bold mt-1"></p>
-    <div id="rBreak" class="mt-4 text-left bg-slate-50 rounded-2xl p-3 text-sm font-bold space-y-1"></div>
+    <div id="rRank" class="mt-4 text-left bg-sky-50 rounded-2xl p-3"></div>
+    <div id="rBreak" class="mt-3 text-left bg-slate-50 rounded-2xl p-3 text-sm font-bold space-y-1"></div>
     <div id="rConcept" class="mt-3 grid grid-cols-2 gap-2 text-xs font-black"></div>
+    <div id="saveRow" class="mt-3 flex gap-2 items-center">
+      <input id="rName" maxlength="8" autocomplete="off" placeholder="輸入你的名字" class="flex-1 min-w-0 rounded-xl border-2 border-green-200 px-3 py-2 font-bold text-slate-700 text-base">
+      <button id="btnSaveScore" class="btn" style="padding:.55rem 1rem;font-size:.9rem">💾 記錄成績</button>
+    </div>
+    <div class="mt-3 text-left bg-amber-50 rounded-2xl p-3">
+      <div class="flex justify-between items-center"><div class="font-black text-amber-800 text-sm">🏆 光榮榜（這部 iPad 的最高分）</div><button id="btnClearBoard" class="text-[11px] text-slate-400 underline">清空</button></div>
+      <div id="rBoard" class="mt-1"></div>
+    </div>
     <div id="rFact" class="mt-3 text-xs text-amber-800 bg-amber-50 rounded-xl p-2 font-bold"></div>
     <div class="flex flex-wrap gap-3 justify-center mt-4">
       <button id="btnAgain" class="btn">🔄 再玩一次</button>
@@ -869,15 +902,60 @@ const HOTSPOTS = [
 ];
 
 const card = $('#infoCard');
-const exVisited = new Set();
+const exDone = new Set();                                            // 已完成（讀完並按「我記住了」）的主題
+const FORCE_UNLOCK = /[?&]unlock/.test(window.location.search);     // 老師測試用：網址後面加 ?unlock=1 就可直接玩
+const canPlay = () => FORCE_UNLOCK || exDone.size >= 4;
+let exTimer = null;
 function updateProgress() {
-  $('#exProg').textContent = String(exVisited.size);
-  $('#exProgBar').style.width = Math.max(3, exVisited.size / 4 * 100) + '%';
-  document.querySelectorAll('#chipPanel .chip').forEach(c => { c.querySelector('.chk').textContent = exVisited.has(c.dataset.id) ? '✔' : ''; });
-  $('#btnGoGame').classList.toggle('pulse2', exVisited.size >= 4);
+  const n = exDone.size, ok = canPlay();
+  $('#exProg').textContent = String(n);
+  $('#exProgBar').style.width = Math.max(3, n / 4 * 100) + '%';
+  document.querySelectorAll('#chipPanel .chip').forEach(c => { c.querySelector('.chk').textContent = exDone.has(c.dataset.id) ? '✔' : ''; });
+  const gb = $('#btnGoGame'); gb.textContent = ok ? '🚙 挑戰大冒險' : '🔒 完成 4 個秘密解鎖';
+  gb.classList.toggle('locked', !ok); gb.classList.toggle('pulse2', ok);
+  $('#tabGameIcon').textContent = ok ? '🚙' : '🔒'; $('#tabGameCnt').textContent = ok ? '' : n + '/4';
+  $('#tabGame').classList.toggle('locked', !ok);
 }
 function showWelcome() { $('#welcome').classList.remove('hidden'); }
 function hideWelcome() { $('#welcome').classList.add('hidden'); }
+
+/* 解鎖／未解鎖提示 */
+function showGate(kind) {
+  const box = $('#gateBox');
+  if (kind === 'unlocked') {
+    box.innerHTML = '<div class="text-6xl">🎉</div><h3 class="text-2xl font-black text-green-800 mt-1">4 個秘密全部完成！</h3>' +
+      '<p class="font-bold text-slate-600 mt-1">AGV 大冒險已解鎖 🔓<br>題目全部來自你剛才讀過的「記住這幾點」，加油！</p>' +
+      '<div class="flex flex-wrap gap-3 justify-center mt-4"><button data-play class="btn text-lg">🚙 馬上出發！</button>' +
+      '<button data-stay class="btn2" style="flex:none;padding:.65rem 1.2rem;border-radius:9999px">留在展廳</button></div>';
+    sfx.ok();
+  } else {
+    box.innerHTML = '<div class="text-6xl">🔒</div><h3 class="text-2xl font-black text-slate-700 mt-1">大冒險還沒解鎖</h3>' +
+      '<p class="font-bold text-slate-600 mt-1">先完成展廳的 4 個物理小秘密（讀完資訊卡，按「✅ 我記住了」），就可以出發！</p>' +
+      '<div class="mt-3 space-y-2 text-left">' + HOTSPOTS.map(h => {
+        const d = exDone.has(h.id);
+        return '<button data-go="' + h.id + '" class="opt"><span class="ltr">' + (d ? '✔' : CONCEPTS[h.c].emoji) + '</span><span class="flex-1">' + h.title + '</span><span class="text-xs font-black ' + (d ? 'text-green-600' : 'text-amber-600') + '">' + (d ? '已完成' : '去看看 →') + '</span></button>';
+      }).join('') + '</div><div class="mt-4"><button data-stay class="btn2" style="flex:none;padding:.55rem 1.4rem;border-radius:9999px">關閉</button></div>';
+  }
+  $('#gateModal').classList.remove('hidden');
+}
+$('#gateModal').addEventListener('click', e => {
+  const t = e.target.closest('button'), m = $('#gateModal');
+  if (!t) { if (e.target === m) m.classList.add('hidden'); return; }
+  if (t.hasAttribute('data-play')) { m.classList.add('hidden'); setMode('game'); }
+  else if (t.hasAttribute('data-stay')) m.classList.add('hidden');
+  else if (t.hasAttribute('data-go')) { m.classList.add('hidden'); openCard(t.getAttribute('data-go')); }
+});
+function completeTopic(id) {
+  if (exDone.has(id)) return;
+  const was = canPlay(); exDone.add(id); sfx.ok(); updateProgress();
+  const bd = card.querySelector('#btnDone');
+  if (bd) { bd.disabled = true; bd.classList.remove('pulse2'); bd.classList.add('done'); bd.textContent = '✔ 已完成這個秘密'; }
+  if (!was && canPlay()) showGate('unlocked'); else popup('✅ 已完成 ' + exDone.size + '/4', '#bbf7d0');
+}
+$('#btnReset').addEventListener('click', () => {
+  if (!window.confirm('換人玩？會清除目前的展廳進度，大冒險會重新上鎖。')) return;
+  exDone.clear(); updateProgress(); goHome(); showWelcome();
+});
 
 function renderTool(h, box) {
   const t = h.tool, vals = {};
@@ -902,7 +980,7 @@ function renderTool(h, box) {
 
 function openCard(id, focus = true) {
   const idx = HOTSPOTS.findIndex(h => h.id === id); if (idx < 0) return;
-  const h = HOTSPOTS[idx]; ex.selected = id; sfx.click(); exVisited.add(id); updateProgress(); hideWelcome();
+  const h = HOTSPOTS[idx]; ex.selected = id; sfx.click(); hideWelcome(); clearInterval(exTimer);
   const dots = HOTSPOTS.map((x, i) => '<button data-dot="' + i + '" title="' + x.title + '" class="' + (i === idx ? 'on' : '') + '"></button>').join('');
   const views = h.views.map((v, i) => '<button data-view="' + i + '" class="view-btn">' + (v.label || '🎯 回到重點') + '</button>').join('');
   card.innerHTML =
@@ -917,17 +995,27 @@ function openCard(id, focus = true) {
     '<section class="sec"><h4>🌿 在農場裡</h4><ul class="farm">' + h.farm.map(t => '<li>' + t + '</li>').join('') + '</ul></section>' +
     '<section class="sec"><h4>🎛 動手玩</h4><div id="toolBox"></div></section>' +
     '<section class="sec"><h4>👁 看看這裡</h4><div class="flex flex-wrap gap-2">' + views + '</div></section>' +
-    '<section class="keybox"><h4 class="font-black">🔑 記住這幾點<span class="badge">🎮 大冒險會考！</span></h4><ol>' + h.keys.map(t => '<li><span>' + t + '</span></li>').join('') + '</ol></section>' +
-    '<div class="flex gap-2"><button data-prev class="btn2">← 上一個</button><button data-next class="btn2">' + (idx === 3 ? '🚙 去挑戰大冒險' : '下一個 →') + '</button></div>' +
+    '<section class="keybox"><h4 class="font-black">🔑 記住這幾點<span class="badge">🎮 大冒險會考！</span></h4><ol>' + h.keys.map(t => '<li><span>' + t + '</span></li>').join('') + '</ol><button data-done id="btnDone" class="btn mt-2" style="width:100%" disabled></button></section>' +
+    '<div class="flex gap-2"><button data-prev class="btn2">← 上一個</button><button data-next class="btn2">' + (canPlay() ? '🚙 去挑戰大冒險' : '下一個 →') + '</button></div>' +
     '</div>';
   card.classList.remove('hidden'); card.scrollTop = 0; document.body.classList.add('card-open');
   renderTool(h, card.querySelector('#toolBox'));
+  const bd = card.querySelector('#btnDone');
+  if (exDone.has(id)) { bd.textContent = '✔ 已完成這個秘密'; bd.classList.add('done'); }
+  else {
+    let left = 6; bd.textContent = '⏳ 請先讀一讀…（' + left + '）';
+    exTimer = setInterval(() => {
+      left--;
+      if (left <= 0) { clearInterval(exTimer); bd.disabled = false; bd.textContent = '✅ 我記住了！'; bd.classList.add('pulse2'); }
+      else bd.textContent = '⏳ 請先讀一讀…（' + left + '）';
+    }, 1000);
+  }
   const lb = $('#lookBar'); lb.textContent = h.look; lb.classList.remove('hidden');
   document.querySelectorAll('#chipPanel .chip').forEach(c => c.classList.toggle('on', c.dataset.id === id));
   if (focus) focusView(id, 0); else ex.follow = false;
 }
 function closeCard() {
-  card.classList.add('hidden'); document.body.classList.remove('card-open');
+  card.classList.add('hidden'); document.body.classList.remove('card-open'); clearInterval(exTimer);
   ex.selected = null; ex.follow = false; $('#lookBar').classList.add('hidden');
   document.querySelectorAll('#chipPanel .chip').forEach(c => c.classList.remove('on'));
 }
@@ -935,7 +1023,8 @@ card.addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t) return;
   const idx = HOTSPOTS.findIndex(h => h.id === ex.selected);
   if (t.hasAttribute('data-close')) closeCard();
-  else if (t.hasAttribute('data-next')) { if (idx === 3) setMode('game'); else openCard(HOTSPOTS[idx + 1].id); }
+  else if (t.hasAttribute('data-next')) { if (canPlay()) setMode('game'); else openCard(HOTSPOTS[(idx + 1) % 4].id); }
+  else if (t.hasAttribute('data-done')) completeTopic(ex.selected);
   else if (t.hasAttribute('data-prev')) openCard(HOTSPOTS[(idx + 3) % 4].id);
   else if (t.hasAttribute('data-dot')) openCard(HOTSPOTS[Number(t.getAttribute('data-dot'))].id);
   else if (t.hasAttribute('data-view')) { sfx.click(); focusView(ex.selected, Number(t.getAttribute('data-view'))); }
@@ -1006,11 +1095,21 @@ function zoneOf(i) { const t = i / NS; for (const z of ZONES) if (t >= z.a && t 
 const ELEV = S.map((p, i) => { const t = i / NS, z = ZONES[1]; if (t >= z.a && t <= z.b) { const u = (t - z.a) / (z.b - z.a); return 11 * Math.pow(Math.sin(Math.PI * u), 2); } return 0; });
 let _ni = 0, _nd = 0;
 function nearestRaw(x, z) { let bi = 0, bd = 1e18; for (let i = 0; i <= NS; i++) { const dx = S[i].x - x, dz = S[i].z - z, d = dx * dx + dz * dz; if (d < bd) { bd = d; bi = i; } } _ni = bi; _nd = bd; }
-function heightAt(x, z) { nearestRaw(x, z); const d = Math.sqrt(_nd); return ELEV[_ni] * (1 - smoothstep(9, 45, d)); }
+function heightAt(x, z) { nearestRaw(x, z); const d = Math.sqrt(_nd); return ELEV[_ni] * (1 - smoothstep(14, 50, d)); }
 
 const GATE_T = [0.14, 0.30, 0.58, 0.74];
 const FINISH_IDX = NS - 10;
 const gates = [], pickups = [], RESERVED = [];
+const ROAD_HALF = 9;                                   // 車道半寬（原本 6.2，現在是 3 條線，每條 6 米闊）
+const SPC = trackCurve.getLength() / NS;                // 賽道每一格約多少米
+const NPC_DEFS = [
+  { name: '小藍', emoji: '🔵', color: 0x3b82f6, css: '#3b82f6', speed: 17.5, lane: -6, s0: 9 },
+  { name: '小橙', emoji: '🟠', color: 0xf97316, css: '#f97316', speed: 16.5, lane: 6, s0: 9 },
+  { name: '小紫', emoji: '🟣', color: 0xa855f7, css: '#a855f7', speed: 18.5, lane: -6, s0: 3 },
+  { name: '小紅', emoji: '🔴', color: 0xef4444, css: '#ef4444', speed: 15.5, lane: 6, s0: 3 },
+  { name: '小黃', emoji: '🟡', color: 0xeab308, css: '#eab308', speed: 19, lane: 0, s0: 0.5 }
+];
+const npcs = [];
 const gw = { built: false, clouds: [], arm: null, glows: [] };
 const HERBS = [{ n: '艾草', c: 0x7cb342 }, { n: '桂花', c: 0xffb300 }, { n: '薄荷', c: 0x26c6da }, { n: '金銀花', c: 0xfff176 }, { n: '靈芝', c: 0xe57373 }];
 
@@ -1031,7 +1130,7 @@ function buildGameWorld() {
   // 預留區域（溫室、機械臂站）
   const gp3 = Math.round(GATE_T[2] * NS);
   const armSide = new THREE.Vector3(TAN[gp3].z, 0, -TAN[gp3].x);
-  const armPos = S[gp3].clone().addScaledVector(armSide, 17);
+  const armPos = S[gp3].clone().addScaledVector(armSide, 24);
   RESERVED.push({ x: armPos.x, z: armPos.z, r: 14 });
   [0.10, 0.50, 0.91].forEach((t, k) => {
     const i = Math.round(t * NS), L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x), side = k === 1 ? -1 : 1;
@@ -1050,10 +1149,10 @@ function buildGameWorld() {
   const gA = new THREE.Color(0x86c65a), gB = new THREE.Color(0x9ad46a), soil = new THREE.Color(0x7a5230), soil2 = new THREE.Color(0x8b6038), tmp = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i); nearestRaw(x, z); const d = Math.sqrt(_nd);
-    pos.setY(i, ELEV[_ni] * (1 - smoothstep(9, 45, d)));
+    pos.setY(i, ELEV[_ni] * (1 - smoothstep(14, 50, d)));
     const n = 0.5 + 0.5 * Math.sin(x * 0.045) * Math.cos(z * 0.06);
     tmp.copy(gA).lerp(gB, n);
-    if (zoneOf(_ni) === 'mud') { const k = 1 - smoothstep(26, 40, d); tmp.lerp((Math.floor(x / 10) + Math.floor(z / 10)) % 2 ? soil : soil2, k); }
+    if (zoneOf(_ni) === 'mud') { const k = 1 - smoothstep(30, 44, d); tmp.lerp((Math.floor(x / 10) + Math.floor(z / 10)) % 2 ? soil : soil2, k); }
     col[i * 3] = tmp.r; col[i * 3 + 1] = tmp.g; col[i * 3 + 2] = tmp.b;
   }
   tg.setAttribute('color', new THREE.BufferAttribute(col, 3)); tg.computeVertexNormals();
@@ -1066,19 +1165,19 @@ function buildGameWorld() {
     if (t >= z.a - 0.004 && t <= z.b + 0.004) k = Math.min(smoothstep(z.a - 0.004, z.a + 0.004, t), 1 - smoothstep(z.b - 0.004, z.b + 0.004, t));
     base.lerp(mud, k); return [base.r, base.g, base.b];
   };
-  sc.add(makeRibbon(S, TAN, 6.2, i => ELEV[i] + 0.2, roadCol));
+  sc.add(makeRibbon(S, TAN, ROAD_HALF, i => ELEV[i] + 0.2, roadCol));
   const edgeCol = () => [1, 1, 1];
-  sc.add(makeRibbon(S, TAN, 0.14, i => ELEV[i] + 0.24, edgeCol, 5.6));
-  sc.add(makeRibbon(S, TAN, 0.14, i => ELEV[i] + 0.24, edgeCol, -5.6));
+  sc.add(makeRibbon(S, TAN, 0.14, i => ELEV[i] + 0.24, edgeCol, ROAD_HALF - 0.6));
+  sc.add(makeRibbon(S, TAN, 0.14, i => ELEV[i] + 0.24, edgeCol, -(ROAD_HALF - 0.6)));
   const dashG = new THREE.BoxGeometry(0.4, 0.05, 2.4), dashM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 });
-  const dashIM = new THREE.InstancedMesh(dashG, dashM, Math.floor(NS / 5)); const dm = new THREE.Object3D(); let dn = 0;
-  for (let i = 4; i < NS - 4; i += 5) { if (zoneOf(i) === 'mud') continue; dm.position.set(S[i].x, ELEV[i] + 0.25, S[i].z); dm.rotation.set(0, Math.atan2(TAN[i].x, TAN[i].z), 0); dm.updateMatrix(); dashIM.setMatrixAt(dn++, dm.matrix); }
+  const dashIM = new THREE.InstancedMesh(dashG, dashM, Math.floor(NS / 5) * 2); const dm = new THREE.Object3D(); let dn = 0;
+  for (let i = 4; i < NS - 4; i += 5) { if (zoneOf(i) === 'mud') continue; for (const lat of [-3, 3]) { dm.position.set(S[i].x + TAN[i].z * lat, ELEV[i] + 0.25, S[i].z - TAN[i].x * lat); dm.rotation.set(0, Math.atan2(TAN[i].x, TAN[i].z), 0); dm.updateMatrix(); dashIM.setMatrixAt(dn++, dm.matrix); } }
   dashIM.count = dn; dashIM.frustumCulled = false; sc.add(dashIM);
 
   // 泥水窪
   const pg = new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2), pm = new THREE.MeshStandardMaterial({ color: 0x3b2a1b, roughness: 0.15, metalness: 0.2 });
   for (let k = 0; k < 40; k++) {
-    const i = Math.round((ZONES[0].a + 0.01 + rand() * (ZONES[0].b - ZONES[0].a - 0.02)) * NS), L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x), lat = (rand() - 0.5) * 9;
+    const i = Math.round((ZONES[0].a + 0.01 + rand() * (ZONES[0].b - ZONES[0].a - 0.02)) * NS), L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x), lat = (rand() - 0.5) * 16;
     const p = new THREE.Mesh(pg, pm); p.scale.set(1.2 + rand() * 1.5, 1, 0.8 + rand()); p.position.set(S[i].x + L.x * lat, ELEV[i] + 0.23, S[i].z + L.z * lat); p.rotation.y = rand() * 3; sc.add(p);
   }
 
@@ -1086,9 +1185,9 @@ function buildGameWorld() {
   const bedPos = [];
   for (let i = 20; i < NS - 20; i += 14) for (const side of [-1, 1]) {
     if (rand() < 0.25) continue;
-    const L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x), lat = (15 + rand() * 12) * side;
+    const L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x), lat = (19 + rand() * 12) * side;
     const x = S[i].x + L.x * lat, z = S[i].z + L.z * lat;
-    if (!placeable(x, z, 13)) continue; bedPos.push({ x, z, ry: Math.atan2(TAN[i].x, TAN[i].z), tx: TAN[i].x, tz: TAN[i].z });
+    if (!placeable(x, z, 17)) continue; bedPos.push({ x, z, ry: Math.atan2(TAN[i].x, TAN[i].z), tx: TAN[i].x, tz: TAN[i].z });
   }
   const bedIM = new THREE.InstancedMesh(new THREE.BoxGeometry(3, 0.4, 16), new THREE.MeshStandardMaterial({ color: 0x6d4c33, flatShading: true, roughness: 1 }), bedPos.length);
   const plantIM = new THREE.InstancedMesh(new THREE.ConeGeometry(0.4, 1.2, 5), new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.9 }), bedPos.length * 7);
@@ -1109,8 +1208,8 @@ function buildGameWorld() {
   const canopyIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1.9, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.9 }), 220);
   let tn = 0; const treeCols = [0x4caf50, 0x66bb6a, 0x558b2f, 0x7cb342];
   for (let a = 0; a < 3000 && tn < 220; a++) {
-    const i = Math.floor(rand() * NS), side = rand() < 0.5 ? -1 : 1, L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x), lat = (12 + rand() * 40) * side;
-    const x = S[i].x + L.x * lat, z = S[i].z + L.z * lat; if (!placeable(x, z, 11.5)) continue;
+    const i = Math.floor(rand() * NS), side = rand() < 0.5 ? -1 : 1, L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x), lat = (15 + rand() * 40) * side;
+    const x = S[i].x + L.x * lat, z = S[i].z + L.z * lat; if (!placeable(x, z, 15)) continue;
     const y = heightAt(x, z), s = 0.8 + rand() * 0.9;
     o3.position.set(x, y + 1.3 * s, z); o3.rotation.set(0, 0, 0); o3.scale.setScalar(s); o3.updateMatrix(); trunkIM.setMatrixAt(tn, o3.matrix);
     o3.position.set(x, y + 3.6 * s, z); o3.rotation.set(0, rand() * 3, 0); o3.updateMatrix(); canopyIM.setMatrixAt(tn, o3.matrix);
@@ -1141,31 +1240,31 @@ function buildGameWorld() {
     const i = Math.round(t * NS), c = CONCEPTS[gi], g = new THREE.Group();
     g.position.set(S[i].x, ELEV[i], S[i].z); g.rotation.y = Math.atan2(TAN[i].x, TAN[i].z);
     const pm2 = M(c.hex, { emissive: c.hex, emissiveIntensity: 0.5 });
-    [-7.2, 7.2].forEach(x => g.add(mesh(new THREE.BoxGeometry(0.8, 7, 0.8), pm2, x, 3.5, 0)));
-    g.add(mesh(new THREE.BoxGeometry(15.2, 1, 1), pm2, 0, 7, 0));
-    const field = new THREE.Mesh(new THREE.PlaneGeometry(14, 6.5), new THREE.MeshBasicMaterial({ color: c.hex, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false })); field.position.set(0, 3.6, 0); g.add(field);
+    [-10.8, 10.8].forEach(x => g.add(mesh(new THREE.BoxGeometry(0.8, 7, 0.8), pm2, x, 3.5, 0)));
+    g.add(mesh(new THREE.BoxGeometry(22.4, 1, 1), pm2, 0, 7, 0));
+    const field = new THREE.Mesh(new THREE.PlaneGeometry(21.6, 6.5), new THREE.MeshBasicMaterial({ color: c.hex, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false })); field.position.set(0, 3.6, 0); g.add(field);
     const lb = makeLabel('❓ 關卡 ' + (gi + 1) + '：' + c.name, { width: 10, border: c.css }); lb.position.set(0, 10.5, 0); g.add(lb);
-    sc.add(g); gates.push({ idx: i, pos: new THREE.Vector3(S[i].x, ELEV[i], S[i].z), concept: gi, done: false, field, group: g });
+    sc.add(g); gates.push({ idx: i, pos: new THREE.Vector3(S[i].x, ELEV[i], S[i].z), concept: gi, done: false, field, group: g, tan: TAN[i] });
   });
 
   // 終點拱門 + 起點
   {
     const i = FINISH_IDX, g = new THREE.Group(); g.position.set(S[i].x, ELEV[i], S[i].z); g.rotation.y = Math.atan2(TAN[i].x, TAN[i].z);
-    [-7.2, 7.2].forEach(x => g.add(mesh(new THREE.BoxGeometry(0.9, 8, 0.9), M(0x111827), x, 4, 0)));
+    [-10.8, 10.8].forEach(x => g.add(mesh(new THREE.BoxGeometry(0.9, 8, 0.9), M(0x111827), x, 4, 0)));
     const cv = document.createElement('canvas'); cv.width = 512; cv.height = 96; const x = cv.getContext('2d');
     for (let a = 0; a < 32; a++) for (let b = 0; b < 6; b++) { x.fillStyle = (a + b) % 2 ? '#111' : '#fff'; x.fillRect(a * 16, b * 16, 16, 16); }
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-    const ban = new THREE.Mesh(new THREE.BoxGeometry(15.4, 1.8, 0.5), new THREE.MeshStandardMaterial({ map: tex })); ban.position.set(0, 7.6, 0); g.add(ban);
+    const ban = new THREE.Mesh(new THREE.BoxGeometry(22.6, 1.8, 0.5), new THREE.MeshStandardMaterial({ map: tex })); ban.position.set(0, 7.6, 0); g.add(ban);
     const fl = makeLabel('🏁 終點：智慧農場', { width: 9, border: '#111827' }); fl.position.set(0, 11, 0); g.add(fl); sc.add(g);
     const j = 4, sg = new THREE.Group(); sg.position.set(S[j].x, ELEV[j], S[j].z); sg.rotation.y = Math.atan2(TAN[j].x, TAN[j].z);
-    [-7.5, 7.5].forEach(xx => sg.add(mesh(new THREE.BoxGeometry(0.5, 4, 0.5), M(0x16a34a), xx, 2, 0)));
+    [-11, 11].forEach(xx => sg.add(mesh(new THREE.BoxGeometry(0.5, 4, 0.5), M(0x16a34a), xx, 2, 0)));
     const sl = makeLabel('🚦 出發！', { width: 7, border: '#16a34a' }); sl.position.set(0, 5.5, 0); sg.add(sl); sc.add(sg);
   }
   // 警告牌
   [[0.275, '⚠ 前方泥濘路段', '#92400e'], [0.735, '⛰ 前方上坡路段', '#b45309']].forEach(a => {
     const i = Math.round(a[0] * NS), L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x);
     [-1, 1].forEach(side => {
-      const g = new THREE.Group(); g.position.set(S[i].x + L.x * 8.2 * side, ELEV[i], S[i].z + L.z * 8.2 * side);
+      const g = new THREE.Group(); g.position.set(S[i].x + L.x * 11.5 * side, ELEV[i], S[i].z + L.z * 11.5 * side);
       g.add(mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), M(0x8d6e63), 0, 1.6, 0));
       const lb = makeLabel(a[1], { width: 6, border: a[2] }); lb.position.set(0, 4.4, 0); g.add(lb); sc.add(g);
     });
@@ -1176,7 +1275,7 @@ function buildGameWorld() {
   for (let k = 0; k < nP; k++) {
     const t = 0.035 + (k + rand() * 0.6) * (0.92 / nP);
     if (GATE_T.some(gt => Math.abs(gt - t) < 0.012)) continue;
-    const i = Math.round(t * NS), L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x), lat = (rand() - 0.5) * 8;
+    const i = Math.round(t * NS), L = new THREE.Vector3(TAN[i].z, 0, -TAN[i].x), lat = (rand() - 0.5) * 14;
     const hb = HERBS[k % HERBS.length], grp = new THREE.Group();
     grp.add(mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.1, 10), M(hb.c, { transparent: true, opacity: 0.55 }), 0, 0.05, 0, false));
     const body = new THREE.Group(); body.position.y = 1.3;
@@ -1189,11 +1288,127 @@ function buildGameWorld() {
 
   // 玩家 AGV
   gw.car = buildAGV(0x22c55e); gw.car.rotation.order = 'YXZ'; sc.add(gw.car);
+  buildNPCs(sc); buildRaceStrip();
   // 泥點粒子
   const NP = 140, parr = new Float32Array(NP * 3).fill(-9999); const pgeo = new THREE.BufferGeometry(); pgeo.setAttribute('position', new THREE.BufferAttribute(parr, 3));
   gw.pts = new THREE.Points(pgeo, new THREE.PointsMaterial({ color: 0x6b4423, size: 1.2, transparent: true, opacity: 0.85, depthWrite: false })); gw.pts.frustumCulled = false; sc.add(gw.pts);
   gw.pData = Array.from({ length: NP }, () => ({ life: 0, vx: 0, vy: 0, vz: 0 })); gw.pN = NP;
   buildMinimap();
+}
+
+/* ---------- NPC 賽車 + 排名 ---------- */
+function npcPose(n) {
+  const i = clamp(Math.floor(n.s), 0, NS - 1), f = clamp(n.s - i, 0, 1);
+  const a = S[i], b = S[i + 1], ta = TAN[i], tb = TAN[i + 1];
+  const tx = lerp(ta.x, tb.x, f), tz = lerp(ta.z, tb.z, f), tl = Math.hypot(tx, tz) || 1, ux = tx / tl, uz = tz / tl;
+  n.x = lerp(a.x, b.x, f) + uz * n.lat; n.z = lerp(a.z, b.z, f) - ux * n.lat;      // 側向 L = (tz, -tx)，與賽道一致
+  n.tx = ux; n.tz = uz; n.y = lerp(ELEV[i], ELEV[i + 1], f) + 0.2;
+  n.pitch = -Math.atan((ELEV[i + 1] - ELEV[i]) / SPC);
+}
+function buildNPCs(sc) {
+  NPC_DEFS.forEach((d, k) => {
+    const m3 = buildAGV(d.color); m3.rotation.order = 'YXZ';
+    const lb = makeLabel(d.emoji + ' ' + d.name, { width: 3.6, border: d.css }); lb.position.set(0, 3.7, 0); m3.add(lb);
+    sc.add(m3);
+    const n = { name: d.name, emoji: d.emoji, css: d.css, s0: d.s0, lane0: d.lane, base: d.speed, mesh: m3, label: lb, s: d.s0, lat: d.lane, tl: d.lane, v: 0, stun: 0, finT: null, ph: k * 1.7, x: 0, z: 0, tx: 0, tz: 1, y: 0, pitch: 0 };
+    npcs.push(n); npcPose(n);
+  });
+}
+function resetNPCs() { npcs.forEach(n => { n.s = n.s0; n.lat = n.lane0; n.tl = n.lane0; n.v = 0; n.stun = 0; n.finT = null; npcPose(n); }); }
+
+function updateNPCs(dt, st) {
+  npcs.forEach(n => {
+    if (st === 'running' && n.finT == null) {
+      const i = clamp(Math.floor(n.s), 0, NS - 5), zn = zoneOf(i), slope = (ELEV[i + 4] - ELEV[i]) / (4 * SPC);
+      let vt = n.base * (1 + 0.05 * Math.sin(car.time * 0.6 + n.ph));
+      if (zn === 'mud') vt *= 0.7;                                   // 泥路較滑，AI 也要減速
+      vt *= 1 - clamp(slope * 2.5, 0, 0.3);                          // 上坡較慢
+      const gap = (n.s - car.prog) * SPC;                            // 與玩家的距離（米）：太遠就稍為追趕／放慢，令比賽有張力
+      if (gap > 90) vt *= 0.9; else if (gap < -70) vt *= 1.08;
+      if (n.stun > 0) { n.stun -= dt; vt *= 0.6; }
+      n.v += clamp(vt - n.v, -10 * dt, 5 * dt);
+      // 避車：前面有車在同一條線上，就轉去旁邊
+      n.tl = n.lane0;
+      const bl = [{ s: car.prog, lat: car.lat }];
+      npcs.forEach(o => { if (o !== n) bl.push({ s: o.s, lat: o.lat }); });
+      for (const b of bl) {
+        const ahead = (b.s - n.s) * SPC;
+        if (ahead > 0 && ahead < 16 && Math.abs(b.lat - n.lat) < 3.6) { n.tl = n.lat >= b.lat ? Math.min(6.5, b.lat + 5.5) : Math.max(-6.5, b.lat - 5.5); break; }
+      }
+      n.lat += clamp(n.tl - n.lat, -3.5 * dt, 3.5 * dt);
+      n.s += n.v * dt / SPC;
+      if (n.s >= FINISH_IDX) n.finT = car.time;
+    } else if (st === 'running' || st === 'over') {
+      n.v = Math.max(0, n.v - (n.finT != null ? 6 : 14) * dt); n.s += n.v * dt / SPC;
+    }
+    n.s = Math.min(n.s, NS - 1.2); n.lat = clamp(n.lat, -7, 7);
+    npcPose(n);
+    n.mesh.position.set(n.x, n.y, n.z); n.mesh.rotation.set(n.pitch, Math.atan2(n.tx, n.tz), 0);
+    n.mesh.userData.wheels.forEach(w => { w.rotation.x += n.v * dt / 0.55; });
+    n.mesh.userData.pivots.forEach(pv => { pv.rotation.y = clamp((n.tl - n.lat) * 0.06, -0.4, 0.4); });
+    n.label.visible = Math.hypot(n.x - car.x, n.z - car.z) < 70;
+  });
+}
+function npcCollide(dt) {
+  car.hitCd -= dt;
+  for (const n of npcs) {
+    const dx = car.x - n.x, dz = car.z - n.z, d = Math.hypot(dx, dz), R = 4.3;
+    if (d < R && d > 0.01) {
+      const nx = dx / d, nz = dz / d, ov = R - d;
+      car.x += nx * ov * 0.6; car.z += nz * ov * 0.6;
+      n.lat -= (nx * n.tz - nz * n.tx) * ov * 0.4; n.s -= (nx * n.tx + nz * n.tz) * ov * 0.4 / SPC;
+      const vn = car.vx * nx + car.vz * nz;
+      if (vn < 0) { car.vx -= vn * nx * 1.3; car.vz -= vn * nz * 1.3; }
+      car.vx *= 0.93; car.vz *= 0.93;
+      if (car.hitCd <= 0) { car.hitCd = 0.8; car.battery = Math.max(0, car.battery - 0.5); n.stun = 0.9; sfx.bump(); setTip('🚗 撞到其他賽車！速度變慢、電量少少損失，盡量避開對手。', 3); }
+    }
+  }
+}
+function racerList() {
+  const arr = [{ id: 'me', name: '你', css: '#22c55e', prog: car.prog, fin: car.finT, me: true }];
+  npcs.forEach(n => arr.push({ id: n.name, name: n.emoji + ' ' + n.name, css: n.css, prog: n.s, fin: n.finT }));
+  arr.sort((a, b) => { const af = a.fin != null, bf = b.fin != null; if (af && bf) return a.fin - b.fin; if (af) return -1; if (bf) return 1; return b.prog - a.prog; });
+  return arr;
+}
+
+/* 賽程條：頂部一條小跑道，顯示所有賽車的位置和 4 個關卡 */
+function buildRaceStrip() {
+  const el = $('#raceStrip'); el.innerHTML = '';
+  GATE_T.forEach((t, i) => { const m = document.createElement('i'); m.style.cssText = 'position:absolute;top:2px;bottom:2px;width:3px;border-radius:2px;left:' + (t * NS / FINISH_IDX * 100) + '%;background:' + CONCEPTS[i].css; el.appendChild(m); });
+  const fl = document.createElement('span'); fl.textContent = '🏁'; fl.style.cssText = 'position:absolute;right:-6px;top:-11px;font-size:15px'; el.appendChild(fl);
+  gw.dots = {};
+  NPC_DEFS.concat([{ name: 'me', css: '#22c55e' }]).forEach(d => {
+    const dot = document.createElement('b');
+    dot.style.cssText = 'position:absolute;top:0;width:12px;height:12px;margin-left:-6px;border-radius:9999px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);background:' + d.css + ';z-index:' + (d.name === 'me' ? 5 : 1);
+    el.appendChild(dot); gw.dots[d.name] = dot;
+  });
+}
+function updateRankHUD(dt) {
+  const order = racerList(), rank = order.findIndex(r => r.me) + 1;
+  setText('hRank', String(rank));
+  const key = order.map(r => r.id).join('|');
+  if (hudCache.rk !== key) {
+    hudCache.rk = key;
+    $('#rankBoard').innerHTML = '<div class="text-[11px] text-slate-500 mb-0.5">🏁 即時排名</div>' + order.map((r, i) =>
+      '<div class="flex items-center gap-1 py-px ' + (r.me ? 'text-green-700 bg-green-100 rounded-md px-1' : 'text-slate-700') + '"><span class="w-3 text-center">' + (i + 1) + '</span><i class="inline-block w-2.5 h-2.5 rounded-full flex-none" style="background:' + r.css + '"></i><span class="flex-1 truncate">' + r.name + '</span></div>').join('');
+  }
+  if (gw.dots) {
+    gw.dots.me.style.left = clamp(car.prog / FINISH_IDX, 0, 1) * 100 + '%';
+    npcs.forEach(n => { gw.dots[n.name].style.left = clamp(n.s / FINISH_IDX, 0, 1) * 100 + '%'; });
+  }
+  game.rankT = (game.rankT || 0) - dt;
+  if (game.lastRank && rank !== game.lastRank && game.state === 'running' && game.rankT <= 0) {
+    game.rankT = 2.5;
+    if (rank < game.lastRank) { popup('📈 第 ' + rank + ' 名！', '#bbf7d0'); sfx.pick(); } else popup('📉 第 ' + rank + ' 名', '#fecaca');
+  }
+  game.lastRank = rank;
+}
+/* 倒數 3-2-1-GO */
+function showCd(t, go) {
+  const w = $('#countdown'), n = $('#cdNum');
+  w.classList.remove('hidden'); n.textContent = t; n.style.color = go ? '#bbf7d0' : '#fff';
+  n.style.animation = 'none'; void n.offsetWidth; n.style.animation = 'cdPop .9s ease-out forwards';
+  clearTimeout(game.cdT); if (go) game.cdT = setTimeout(() => w.classList.add('hidden'), 900);
 }
 
 /* 小地圖 */
@@ -1213,6 +1428,7 @@ function buildMinimap() {
 function drawMinimap() {
   const x = mm.ctx; x.drawImage(mm.bg, 0, 0);
   pickups.forEach(p => { if (!p.got) { x.fillStyle = '#16a34a'; x.beginPath(); x.arc(mm.px(p.x), mm.py(p.z), 1.8, 0, 7); x.fill(); } });
+  npcs.forEach(n => { x.fillStyle = n.css; x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.beginPath(); x.arc(mm.px(n.x), mm.py(n.z), 3.6, 0, 7); x.fill(); x.stroke(); });
   gates.forEach((g, i) => { const X = mm.px(g.pos.x), Y = mm.py(g.pos.z); x.fillStyle = g.done ? '#cbd5e1' : CONCEPTS[i].css; x.beginPath(); x.arc(X, Y, 6, 0, 7); x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 2; x.stroke(); x.fillStyle = '#fff'; x.font = 'bold 9px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(String(i + 1), X, Y + 0.5); });
   const fx = mm.px(S[FINISH_IDX].x), fy = mm.py(S[FINISH_IDX].z); x.fillStyle = '#111'; x.fillRect(fx - 5, fy - 5, 10, 10); x.fillStyle = '#fff'; x.fillRect(fx - 5, fy - 5, 5, 5); x.fillRect(fx, fy, 5, 5);
   x.save(); x.translate(mm.px(car.x), mm.py(car.z)); x.rotate(car.h); x.fillStyle = '#ef4444'; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, -8); x.lineTo(5.5, 6); x.lineTo(0, 3); x.lineTo(-5.5, 6); x.closePath(); x.fill(); x.stroke(); x.restore();
@@ -1255,28 +1471,29 @@ const FACTS = ['🌿 艾草是常見的中藥材，AI 機械臂可以用影像�
 
 const keys = { up: false, down: false, left: false, right: false };
 const game = { state: 'idle', quiz: null };
-const car = { x: 0, z: 0, y: 0, h: 0, vx: 0, vz: 0, steer: 0, roll: 0, pitch: 0, battery: 100, score: 0, herbs: 0, boost: 0, time: 0, correct: 0, results: [null, null, null, null], speed: 0, power: 0, slip: 0, bumpCd: 0, gatesDone: 0, camInit: false };
+const car = { x: 0, z: 0, y: 0, h: 0, vx: 0, vz: 0, steer: 0, roll: 0, pitch: 0, battery: 100, score: 0, herbs: 0, boost: 0, time: 0, correct: 0, results: [null, null, null, null], speed: 0, power: 0, slip: 0, bumpCd: 0, gatesDone: 0, camInit: false, herbBoost: 0, prog: 6, lat: 0, finT: null, hitCd: 0 };
 const flags = {};
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 let mode = 'exhibit';
 
 function resetGame() {
   const p = S[6], t = TAN[6];
-  Object.assign(car, { x: p.x, z: p.z, y: 0, h: Math.atan2(t.x, t.z), vx: 0, vz: 0, steer: 0, roll: 0, pitch: 0, battery: 100, score: 0, herbs: 0, boost: 0, time: 0, correct: 0, results: [null, null, null, null], speed: 0, power: 0, slip: 0, bumpCd: 0, gatesDone: 0 });
+  Object.assign(car, { x: p.x, z: p.z, y: 0, h: Math.atan2(t.x, t.z), vx: 0, vz: 0, steer: 0, roll: 0, pitch: 0, battery: 100, score: 0, herbs: 0, boost: 0, time: 0, correct: 0, results: [null, null, null, null], speed: 0, power: 0, slip: 0, bumpCd: 0, gatesDone: 0, herbBoost: 0, prog: 6, lat: 0, finT: null, hitCd: 0 });
   for (const k in flags) delete flags[k];
   gates.forEach(g => { g.done = false; g.field.material.opacity = 0.18; });
   pickups.forEach(p => { p.got = false; p.group.visible = true; });
   keys.up = keys.down = keys.left = keys.right = false;
   car.camInit = false; $('#boostFx').style.opacity = 0;
-  setTip('💡 按 W / ↑ 加速出發！沿路採集草藥，留意前方的物理關卡。', 8);
+  resetNPCs(); game.lastRank = 0; game.rankT = 0; $('#countdown').classList.add('hidden'); updateRankHUD(0);
+  setTip('💡 撞到中草藥會加速！留意前方的物理關卡，也要避開其他賽車。', 8);
 }
 
 let tipTimer = 0;
 function setTip(txt, ttl = 5) { $('#tip').innerHTML = txt; tipTimer = ttl; }
 function popup(txt, color = '#fff') { const d = document.createElement('div'); d.className = 'popup'; d.textContent = txt; d.style.color = color; d.style.left = (42 + Math.random() * 16) + '%'; document.body.appendChild(d); setTimeout(() => d.remove(), 1500); }
 
-function startRun() { $('#introModal').classList.add('hidden'); if (gyro.on) gyroCalibrate(); game.state = 'running'; sfx.gate(); }
-function showIntro() { game.state = 'intro'; $('#introModal').classList.remove('hidden'); }
+function startRun() { $('#introModal').classList.add('hidden'); if (gyro.on) gyroCalibrate(); game.state = 'countdown'; game.cd = 4; game.lastCd = -1; sfx.gate(); }
+function showIntro() { game.state = 'intro'; renderBoard($('#introBoard'), null, 3); $('#introModal').classList.remove('hidden'); }
 function pauseGame() { if (game.state === 'running') { game.state = 'paused'; keys.up = keys.down = keys.left = keys.right = false; $('#pauseModal').classList.remove('hidden'); } }
 function resumeGame() { if (game.state === 'paused') { if (gyro.on) gyroCalibrate(); game.state = 'running'; $('#pauseModal').classList.add('hidden'); } }
 function togglePause() { if (game.state === 'running') pauseGame(); else if (game.state === 'paused') resumeGame(); }
@@ -1382,26 +1599,50 @@ function closeQuiz() {
   if (car.boost > 0) { popup('🚀 BOOST！', '#38bdf8'); setTip('🚀 Boost 加速中！把握機會多採集草藥吧！', 4); }
 }
 
+/* ---------- 排行榜（只存在這部裝置的瀏覽器，不會上傳） ---------- */
+const BOARD_KEY = 'physFarmBoard';
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function loadBoard() { try { const l = JSON.parse(localStorage.getItem(BOARD_KEY) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } }
+function saveBoard(list) { try { localStorage.setItem(BOARD_KEY, JSON.stringify(list.slice(0, 30))); } catch (e) { /* 私人模式可能無法儲存 */ } }
+function renderBoard(el, hiId, n) {
+  const list = loadBoard().sort((a, b) => b.score - a.score).slice(0, n);
+  el.innerHTML = list.length ? list.map((r, i) =>
+    '<div class="flex items-center gap-2 py-0.5 text-sm ' + (r.id === hiId ? 'bg-amber-200 rounded-lg px-1 font-black' : 'font-bold') + '"><span class="w-6 text-center">' + (['🥇', '🥈', '🥉'][i] || (i + 1)) + '</span><span class="flex-1 text-left truncate">' + esc(r.name) + '</span><span class="text-[11px] text-slate-500">' + esc(r.grade || '') + '</span><span class="text-green-700 w-10 text-right">' + Number(r.score) + '</span></div>').join('')
+    : '<div class="text-center text-slate-400 text-xs py-2">還沒有紀錄，成為第一個上榜的人吧！</div>';
+}
+
 /* ---------- 結算 ---------- */
 function endGame(win) {
   game.state = 'over'; keys.up = keys.down = keys.left = keys.right = false;
+  $('#countdown').classList.add('hidden');
+  if (win && car.finT == null) car.finT = car.time;
+  const order = racerList(), rank = order.findIndex(r => r.me) + 1;
   const herbPts = car.herbs * 10, quizPts = car.correct * 100;
+  const rankPts = win ? ([80, 50, 30][rank - 1] || 0) : 0;
   const batPts = win ? Math.round(car.battery * 1.5) : 0, timePts = win ? clamp(Math.round((200 - car.time) * 0.5), 0, 60) : 0;
-  const total = herbPts + quizPts + batPts + timePts; car.score = total;
-  const maxS = pickups.length * 10 + 400 + 210, pct = total / maxS;
+  const total = herbPts + quizPts + rankPts + batPts + timePts; car.score = total;
+  const maxS = pickups.length * 10 + 400 + 210 + 80, pct = total / maxS;
   let g;
   if (win && car.correct >= 3 && pct >= 0.72) g = { e: '🏆', t: '智慧農場物理大師', m: '太厲害了！你把物理知識活用在駕駛上，是 AI 農業的未來之星！' };
   else if (pct >= 0.55) g = { e: '🥇', t: 'AI 農業工程師', m: '表現出色！再多留意物理概念，就可以成為大師！' };
   else if (pct >= 0.38) g = { e: '🥈', t: 'AGV 見習駕駛員', m: '不錯的開始！回到展廳重溫知識，再挑戰一次吧！' };
   else g = { e: '🌱', t: '物理新苗農夫', m: '別灰心！每位工程師都由失敗中學習，再試一次吧！' };
-  let best = 0; try { best = Number(localStorage.getItem('physFarmBest') || 0); if (total > best) { best = total; localStorage.setItem('physFarmBest', String(best)); } } catch (e) { best = Math.max(best, total); }
-  $('#rEmoji').textContent = win ? g.e : '🔋';
-  $('#rHead').textContent = win ? '🏁 成功抵達終點！' : '🪫 電量耗盡！未能抵達終點';
+  const medal = ['🥇', '🥈', '🥉'][rank - 1];
+  $('#rEmoji').textContent = win ? (medal || g.e) : '🔋';
+  $('#rHead').textContent = win ? '🏁 成功抵達終點！你得了第 ' + rank + ' 名' : '🪫 電量耗盡！未能抵達終點（目前第 ' + rank + ' 位）';
   $('#rGrade').textContent = g.t; $('#rMsg').textContent = win ? g.m : '提示：放開油門滑行、避免急加速、善用再生制動，可以更省電。 ' + g.m;
+  $('#rRank').innerHTML = '<div class="text-xs font-black text-slate-500 mb-1">🏁 比賽名次</div>' + order.map((r, i) =>
+    '<div class="flex items-center gap-2 py-0.5 text-sm ' + (r.me ? 'bg-green-100 rounded-lg px-1 font-black text-green-800' : 'text-slate-700 font-bold') + '"><span class="w-6 text-center">' + (['🥇', '🥈', '🥉'][i] || (i + 1)) + '</span><i class="inline-block w-3 h-3 rounded-full flex-none" style="background:' + r.css + '"></i><span class="flex-1 text-left">' + r.name + '</span><span class="text-xs">' + (r.fin != null ? '⏱ ' + Math.round(r.fin) + ' 秒' : '跑了 ' + Math.round(clamp(r.prog / FINISH_IDX, 0, 1) * 100) + '%') + '</span></div>').join('');
+  const best = Math.max(total, ...loadBoard().map(r => Number(r.score) || 0));
   const row = (a, b) => '<div class="flex justify-between"><span>' + a + '</span><span>' + b + '</span></div>';
-  $('#rBreak').innerHTML = row('🌿 採集草藥 ' + car.herbs + ' 株', '+' + herbPts) + row('❓ 物理題答對 ' + car.correct + '/4', '+' + quizPts) + row('🔋 剩餘電量 ' + Math.round(car.battery) + '%', win ? '+' + batPts : '—') + row('⏱ 用時 ' + Math.round(car.time) + ' 秒', win ? '+' + timePts : '—') + '<div class="border-t pt-1 mt-1 flex justify-between text-lg font-black text-green-700"><span>⭐ 總分</span><span>' + total + '</span></div><div class="text-xs text-slate-400 text-right">🏅 個人最高分：' + best + '</div>';
+  $('#rBreak').innerHTML = row('🌿 採集草藥 ' + car.herbs + ' 株', '+' + herbPts) + row('❓ 物理題答對 ' + car.correct + '/4', '+' + quizPts) + row('🏁 名次第 ' + rank + ' 名', win ? '+' + rankPts : '—') + row('🔋 剩餘電量 ' + Math.round(car.battery) + '%', win ? '+' + batPts : '—') + row('⏱ 用時 ' + Math.round(car.time) + ' 秒', win ? '+' + timePts : '—') + '<div class="border-t pt-1 mt-1 flex justify-between text-lg font-black text-green-700"><span>⭐ 總分</span><span>' + total + '</span></div><div class="text-xs text-slate-400 text-right">🏅 這部 iPad 的最高分：' + best + '</div>';
   $('#rConcept').innerHTML = CONCEPTS.map((c, i) => '<div class="rounded-xl px-2 py-1.5 text-white" style="background:' + c.css + '">' + (car.results[i] === true ? '✅ ' : car.results[i] === false ? '❌ ' : '➖ ') + c.name + '</div>').join('');
   $('#rFact').textContent = FACTS[Math.floor(Math.random() * FACTS.length)];
+  // 排行榜：可輸入名字記錄成績
+  game.pending = { score: total, rank: win ? rank : 0, grade: g.t };
+  let last = ''; try { last = localStorage.getItem('physFarmName') || ''; } catch (e) { /* ignore */ }
+  $('#rName').value = last; const sb = $('#btnSaveScore'); sb.disabled = false; sb.textContent = '💾 記錄成績';
+  renderBoard($('#rBoard'), null, 5);
   $('#resultModal').classList.remove('hidden'); win ? sfx.ok() : sfx.bad();
 }
 
@@ -1413,6 +1654,13 @@ const NEXT_NAMES = CONCEPTS.map(c => c.emoji + ' ' + c.name);
 
 function updateGame(dt, time) {
   const mesh3 = gw.car;
+  if (game.state === 'countdown') {
+    game.cd -= dt;
+    const num = Math.ceil(game.cd) - 1;
+    if (game.cd <= 1) { game.state = 'running'; showCd('GO! 🚦', true); sfx.ok(); }
+    else if (num !== game.lastCd) { game.lastCd = num; showCd(String(num)); beep(520, 0.15, 'square', 0.05); }
+  }
+  updateNPCs(dt, game.state);
   if (game.state === 'running') {
     car.time += dt;
     const throttle = (keys.up || (gyro.on && gyro.auto && !keys.down)) ? 1 : 0, brake = keys.down ? 1 : 0;
@@ -1423,15 +1671,17 @@ function updateGame(dt, time) {
 
     nearestRaw(car.x, car.z); const idx = _ni, d = Math.sqrt(_nd), zone = zoneOf(idx);
     let surf = 'road';
-    if (zone === 'mud' && d <= 10) surf = 'mud'; else if (d > 6.3) surf = 'grass';
+    if (zone === 'mud' && d <= ROAD_HALF + 0.6) surf = 'mud'; else if (d > ROAD_HALF + 0.3) surf = 'grass';
     const MU = SURF[surf].mu, GRIP = SURF[surf].grip;
     const boosting = car.boost > 0; if (boosting) car.boost -= dt;
-    const maxV = (surf === 'grass' ? 12 : 22) * (boosting ? 1.45 : 1);
+    const hb = car.herbBoost > 0; if (hb) car.herbBoost -= dt;
+    const spdMul = boosting ? 1.45 : hb ? 1.22 : 1, accMul = boosting ? 1.8 : hb ? 1.5 : 1;
+    const maxV = (surf === 'grass' ? 12 : 22) * spdMul;
     const trac = 0.45 + 0.55 * (MU / 0.85);
     const hF = heightAt(car.x + fx * 2, car.z + fz * 2), hB = heightAt(car.x - fx * 2, car.z - fz * 2);
     const slope = (hF - hB) / 4;
 
-    let aEng = 0; if (throttle) aEng = 9.5 * trac * (boosting ? 1.8 : 1) * Math.max(0, 1 - Math.max(0, vF) / maxV);
+    let aEng = 0; if (throttle) aEng = 9.5 * trac * accMul * Math.max(0, 1 - Math.max(0, vF) / maxV);
     let a = aEng - 9.8 * slope * 0.9;
     a -= vF * (surf === 'road' ? 0.16 : surf === 'mud' ? 0.4 : 0.55);
     let brakeDecel = 0;
@@ -1452,9 +1702,12 @@ function updateGame(dt, time) {
     // 邊界（田埂）
     car.bumpCd -= dt;
     nearestRaw(car.x, car.z); const d2 = Math.sqrt(_nd);
-    if (d2 > 10.5) {
+    car.prog = _ni + ((car.x - S[_ni].x) * TAN[_ni].x + (car.z - S[_ni].z) * TAN[_ni].z) / SPC;      // 賽道進度（排名用）
+    car.lat = (car.x - S[_ni].x) * TAN[_ni].z - (car.z - S[_ni].z) * TAN[_ni].x;                     // 在車道上的左右位置
+    npcCollide(dt);
+    if (d2 > ROAD_HALF + 4.5) {
       const sx = S[_ni].x - car.x, sz = S[_ni].z - car.z, l = Math.hypot(sx, sz) || 1;
-      car.x += sx / l * (d2 - 10.5); car.z += sz / l * (d2 - 10.5); car.vx *= 0.55; car.vz *= 0.55;
+      car.x += sx / l * (d2 - ROAD_HALF - 4.5); car.z += sz / l * (d2 - ROAD_HALF - 4.5); car.vx *= 0.55; car.vz *= 0.55;
       if (car.bumpCd <= 0) { car.bumpCd = 1; car.battery = Math.max(0, car.battery - 1); sfx.bump(); setTip('🌱 撞到田埂了！小心保護藥苗，留在路上行駛。', 3); }
     }
 
@@ -1466,9 +1719,9 @@ function updateGame(dt, time) {
     car.battery = clamp(car.battery - drain * dt, 0, 100);
 
     // 採集 / 關卡 / 終點
-    for (const p of pickups) if (!p.got) { const dx = p.x - car.x, dz = p.z - car.z; if (dx * dx + dz * dz < 12) { p.got = true; p.group.visible = false; car.herbs++; car.score += 10; sfx.pick(); popup('+10 ' + p.name + ' 🌿', '#bbf7d0'); } }
-    for (let gi = 0; gi < gates.length; gi++) { const g = gates[gi]; if (!g.done) { const dx = g.pos.x - car.x, dz = g.pos.z - car.z; if (dx * dx + dz * dz < 64) { openQuiz(gi); break; } } }
-    if (game.state === 'running' && _ni >= FINISH_IDX && d2 < 10) endGame(true);
+    for (const p of pickups) if (!p.got) { const dx = p.x - car.x, dz = p.z - car.z; if (dx * dx + dz * dz < 16) { p.got = true; p.group.visible = false; car.herbs++; car.score += 10; car.herbBoost = 1.6; car.vx += fx * 2.5; car.vz += fz * 2.5; sfx.pick(); popup('+10 ' + p.name + ' ⚡加速', '#bbf7d0'); } }
+    for (let gi = 0; gi < gates.length; gi++) { const g = gates[gi]; if (!g.done) { const rx = car.x - g.pos.x, rz = car.z - g.pos.z, along = rx * g.tan.x + rz * g.tan.z, side = rx * g.tan.z - rz * g.tan.x; if (Math.abs(along) < 5 && Math.abs(side) < 17) { openQuiz(gi); break; } } }
+    if (game.state === 'running' && _ni >= FINISH_IDX && d2 < ROAD_HALF + 4) endGame(true);
     else if (game.state === 'running' && car.battery <= 0) endGame(false);
 
     // 情境提示
@@ -1483,7 +1736,7 @@ function updateGame(dt, time) {
       for (let k = 0; k < 2; k++) { const pd = gw.pData.find(q => q.life <= 0); if (!pd) break; pd.life = 0.7 + Math.random() * 0.4; const side = Math.random() < 0.5 ? -1 : 1; const arr = gw.pts.geometry.attributes.position.array, ii = gw.pData.indexOf(pd) * 3; arr[ii] = car.x - fx * 1.6 + lx * 1.2 * side; arr[ii + 1] = car.y + 0.4; arr[ii + 2] = car.z - fz * 1.6 + lz * 1.2 * side; pd.vx = -fx * 3 + (Math.random() - 0.5) * 3; pd.vy = 2 + Math.random() * 3; pd.vz = -fz * 3 + (Math.random() - 0.5) * 3; }
     }
     // 車身姿態
-    const gy = heightAt(car.x, car.z) + 0.2 * (1 - smoothstep(6, 8, d2));
+    const gy = heightAt(car.x, car.z) + 0.2 * (1 - smoothstep(ROAD_HALF, ROAD_HALF + 2, d2));
     car.y = gy; car.pitch += (-Math.atan(slope) - car.pitch) * Math.min(1, dt * 8);
     const rollT = car.steer * Math.min(1, car.speed / 15) * 0.07 + clamp(vL2 * 0.01, -0.12, 0.12);
     car.roll += (rollT - car.roll) * Math.min(1, dt * 6);
@@ -1504,7 +1757,7 @@ function updateGame(dt, time) {
     if (nx) { const dd = Math.hypot(nx.pos.x - car.x, nx.pos.z - car.z); nxt = '🎯 下一關：' + NEXT_NAMES[nx.concept] + ' ・ ' + Math.round(dd) + ' m'; }
     if (hudCache.nx !== nxt) { hudCache.nx = nxt; $('#hNext').textContent = nxt; }
     $('#boostFx').style.opacity = car.boost > 0 ? 1 : 0;
-    updateGyroHUD();
+    updateGyroHUD(); updateRankHUD(dt);
     if (tipTimer > 0) { tipTimer -= dt; }
     else if (!hudCache.tipIdle) { hudCache.tipIdle = 1; }
     if (tipTimer <= 0 && hudCache.tipTxt !== 'idle') { hudCache.tipTxt = 'idle'; $('#tip').innerHTML = '🔋 放開油門滑行可省電；🛑 煞車時動能可回收電能！'; }
@@ -1528,7 +1781,7 @@ function updateGame(dt, time) {
     if (game.state === 'running') { const k = 1 - Math.exp(-dt * 4.5); camPos.lerp(want, k); camLook.lerp(look, 1 - Math.exp(-dt * 7)); }
     const minY = heightAt(camPos.x, camPos.z) + 2.2; if (camPos.y < minY) camPos.y = minY;
     gCam.position.copy(camPos); gCam.lookAt(camLook);
-    const fovT = 60 + car.speed * 0.45 + (car.boost > 0 ? 9 : 0); gCam.fov += (fovT - gCam.fov) * Math.min(1, dt * 4); gCam.updateProjectionMatrix();
+    const fovT = 60 + car.speed * 0.45 + (car.boost > 0 ? 9 : 0) + (car.herbBoost > 0 ? 4 : 0); gCam.fov += (fovT - gCam.fov) * Math.min(1, dt * 4); gCam.updateProjectionMatrix();
   }
   gw.sun.position.set(car.x + 55, car.y + 95, car.z + 40); gw.sun.target.position.set(car.x, car.y, car.z);
 
@@ -1548,6 +1801,7 @@ function updateGame(dt, time) {
    5. 輸入 / 模式切換 / 主迴圈
    ========================================================= */
 window.addEventListener('keydown', e => {
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;     // 輸入名字／拖動滑桿時不要當成遊戲按鍵
   const k = e.key.toLowerCase();
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   if (mode === 'game') {
@@ -1591,11 +1845,23 @@ $('#btnResume').addEventListener('click', resumeGame);
 $('#btnPauseBack').addEventListener('click', () => { $('#pauseModal').classList.add('hidden'); setMode('exhibit'); });
 $('#btnAgain').addEventListener('click', () => { $('#resultModal').classList.add('hidden'); resetGame(); startRun(); });
 $('#btnResBack').addEventListener('click', () => setMode('exhibit'));
+$('#btnSaveScore').addEventListener('click', () => {
+  if (!game.pending) return;
+  const name = ($('#rName').value || '').trim().slice(0, 8) || '玩家';
+  try { localStorage.setItem('physFarmName', name); } catch (e) { /* ignore */ }
+  const list = loadBoard(), id = Date.now();
+  list.push({ id, name, score: game.pending.score, rank: game.pending.rank, grade: game.pending.grade });
+  list.sort((a, b) => b.score - a.score); saveBoard(list);
+  game.pending = null; $('#btnSaveScore').disabled = true; $('#btnSaveScore').textContent = '✔ 已記錄';
+  renderBoard($('#rBoard'), id, 5); sfx.ok();
+});
+$('#btnClearBoard').addEventListener('click', () => { if (window.confirm('確定要清空排行榜嗎？')) { saveBoard([]); renderBoard($('#rBoard'), null, 5); } });
 $('#tabExhibit').addEventListener('click', () => setMode('exhibit'));
 $('#tabGame').addEventListener('click', () => setMode('game'));
 $('#btnSound').addEventListener('click', () => { soundOn = !soundOn; $('#btnSound').textContent = soundOn ? '🔊' : '🔇'; if (soundOn) sfx.click(); });
 
 function setMode(m) {
+  if (m === 'game' && !canPlay()) { sfx.bad(); showGate('locked'); return; }
   mode = m;
   $('#exhibitUI').classList.toggle('hidden', m !== 'exhibit');
   $('#gameUI').classList.toggle('hidden', m !== 'game');
